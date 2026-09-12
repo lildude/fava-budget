@@ -10,7 +10,11 @@ class PackageDataTest(unittest.TestCase):
         template = package.joinpath("templates").joinpath("Budget.html").read_text(encoding="utf-8")
         javascript = package.joinpath("Budget.js").read_text(encoding="utf-8")
 
-        self.assertIn("Budget overview", template)
+        self.assertIn('class="budget-page"', template)
+        self.assertIn('class="budget-responsive-table budget-categories"', template)
+        self.assertIn("@media (width <= 650px)", template)
+        self.assertNotIn("\n  header {", template)
+        self.assertNotIn("\n  article {", template)
         self.assertIn("bindBudgetCopyButtons", javascript)
 
 

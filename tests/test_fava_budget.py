@@ -115,7 +115,9 @@ class BudgetRouteTest(unittest.TestCase):
         response = self.client.get("/budget-test/extension/Budget/?month=2026-02")
 
         self.assertEqual(response.status_code, 200)
-        self.assertIn(b"Budget overview", response.data)
+        self.assertIn(b'class="budget-report-heading"', response.data)
+        self.assertIn(b'class="button muted budget-icon-button"', response.data)
+        self.assertIn(b'class="status-indicator status-red"', response.data)
         self.assertIn(b"Food and dining", response.data)
         self.assertIn(b"Unbudgeted spending", response.data)
 
@@ -131,6 +133,8 @@ class BudgetRouteTest(unittest.TestCase):
 
         self.assertEqual(response.status_code, 200)
         self.assertIn(b'<span class="budget-money">XXX.XX</span>', response.data)
+        self.assertIn(b"Progress hidden in incognito mode", response.data)
+        self.assertNotIn(b'role="progressbar"', response.data)
         self.assertNotIn(b"data-budget-directive=", response.data)
 
 
