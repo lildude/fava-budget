@@ -1,0 +1,724 @@
+{% set report = extension.build_report(request.args.get('month')) %}
+{% set private_mode = config.get('INCOGNITO', false) %}
+
+{% macro money(value) -%}
+  <span class="budget-money">{{ value|format_currency(report.currency)|incognito }}</span>
+  <span class="budget-currency">{{ report.currency }}</span>
+{%- endmacro %}
+
+<style>
+  .budget-page {
+    --budget-good: var(--green);
+    --budget-watch: light-dark(hsl(35deg 90% 38%), hsl(42deg 95% 64%));
+    --budget-bad: var(--red);
+    display: grid;
+    gap: 1.5rem;
+    margin: 0 auto;
+    max-width: 1180px;
+  }
+
+  .budget-visually-hidden {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
+    clip-path: inset(50%);
+    white-space: nowrap;
+  }
+
+  .budget-hero,
+  .budget-panel,
+  .budget-alert {
+    border: 1px solid var(--border);
+    border-radius: 0.75rem;
+    background: var(--background-darker);
+  }
+
+  .budget-hero {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 1.5rem;
+    padding: 1.5rem;
+  }
+
+  .budget-eyebrow,
+  .budget-kicker {
+    margin: 0 0 0.35rem;
+    color: var(--text-color-lightest);
+    font-size: 0.78rem;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+  }
+
+  .budget-hero h1,
+  .budget-panel h2 {
+    margin: 0;
+  }
+
+  .budget-subtitle {
+    margin: 0.45rem 0 0;
+    color: var(--text-color-lightest);
+  }
+
+  .budget-nav {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+  }
+
+  .budget-nav a,
+  .budget-nav button,
+  .budget-copy {
+    min-height: 2.3rem;
+    border: 1px solid var(--border-darker);
+    border-radius: 0.4rem;
+    padding: 0.45rem 0.75rem;
+    background: var(--background);
+    color: var(--text-color);
+    font: inherit;
+    line-height: 1.2;
+    text-decoration: none;
+  }
+
+  .budget-nav a:hover,
+  .budget-nav button:hover,
+  .budget-copy:hover {
+    border-color: var(--link-color);
+    color: var(--link-color);
+  }
+
+  .budget-nav form {
+    display: flex;
+    gap: 0.4rem;
+  }
+
+  .budget-nav input {
+    min-height: 2.3rem;
+    border: 1px solid var(--border-darker);
+    border-radius: 0.4rem;
+    padding: 0.35rem 0.55rem;
+    background: var(--background);
+    color: var(--text-color);
+    font: inherit;
+  }
+
+  .budget-alert {
+    padding: 1rem 1.15rem;
+    border-left-width: 0.35rem;
+  }
+
+  .budget-alert ul {
+    margin: 0.4rem 0 0;
+  }
+
+  .budget-alert-error {
+    border-left-color: var(--budget-bad);
+  }
+
+  .budget-alert-warning {
+    border-left-color: var(--budget-watch);
+  }
+
+  .budget-alert-info {
+    border-left-color: var(--link-color);
+  }
+
+  .budget-summary {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 0.8rem;
+  }
+
+  .budget-summary-card {
+    padding: 1rem 1.1rem;
+    border: 1px solid var(--border);
+    border-radius: 0.65rem;
+    background: var(--background-darker);
+  }
+
+  .budget-summary-card strong {
+    display: block;
+    margin-top: 0.35rem;
+    font-size: 1.5rem;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .budget-currency {
+    margin-left: 0.2rem;
+    color: var(--text-color-lightest);
+    font-size: 0.72em;
+    font-weight: 500;
+  }
+
+  .budget-overview {
+    padding: 1.25rem;
+  }
+
+  .budget-overview-line,
+  .budget-section-heading,
+  .budget-reconciliation {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 1rem;
+  }
+
+  .budget-status {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    border-radius: 999px;
+    padding: 0.25rem 0.55rem;
+    background: var(--background-darkest);
+    font-size: 0.8rem;
+    font-weight: 700;
+    white-space: nowrap;
+  }
+
+  .budget-status::before {
+    width: 0.55rem;
+    height: 0.55rem;
+    border-radius: 50%;
+    background: var(--budget-good);
+    content: "";
+  }
+
+  .budget-status-watch::before {
+    background: var(--budget-watch);
+  }
+
+  .budget-status-over::before {
+    background: var(--budget-bad);
+  }
+
+  .budget-status-planned::before {
+    background: var(--gray);
+  }
+
+  .budget-progress {
+    position: relative;
+    height: 0.65rem;
+    margin-top: 0.85rem;
+    overflow: hidden;
+    border-radius: 999px;
+    background: var(--background-darkest);
+  }
+
+  .budget-progress-fill {
+    height: 100%;
+    border-radius: inherit;
+    background: var(--budget-good);
+  }
+
+  .budget-progress-fill-watch {
+    background: var(--budget-watch);
+  }
+
+  .budget-progress-fill-over {
+    background: var(--budget-bad);
+  }
+
+  .budget-progress-marker {
+    position: absolute;
+    top: -0.2rem;
+    bottom: -0.2rem;
+    width: 2px;
+    background: var(--text-color);
+    opacity: 0.7;
+  }
+
+  .budget-overview-meta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem 1.25rem;
+    margin: 0.75rem 0 0;
+    color: var(--text-color-lightest);
+    font-size: 0.9rem;
+  }
+
+  .budget-panel {
+    overflow: hidden;
+  }
+
+  .budget-section-heading {
+    padding: 1rem 1.15rem;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .budget-section-heading p {
+    margin: 0;
+    color: var(--text-color-lightest);
+  }
+
+  .budget-categories {
+    display: grid;
+  }
+
+  .budget-category {
+    display: grid;
+    grid-template-columns: minmax(13rem, 1.5fr) repeat(3, minmax(7rem, 0.65fr));
+    gap: 1rem;
+    padding: 1rem 1.15rem;
+    border-bottom: 1px solid var(--border-lighter);
+  }
+
+  .budget-category:last-child {
+    border-bottom: 0;
+  }
+
+  .budget-category-main {
+    min-width: 0;
+  }
+
+  .budget-category-title {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 0.45rem;
+  }
+
+  .budget-category-title a {
+    overflow: hidden;
+    font-weight: 700;
+    text-overflow: ellipsis;
+  }
+
+  .budget-category-note {
+    display: block;
+    margin-top: 0.25rem;
+    color: var(--text-color-lightest);
+    font-size: 0.8rem;
+  }
+
+  .budget-category .budget-progress {
+    margin-top: 0.65rem;
+  }
+
+  .budget-amount {
+    text-align: right;
+  }
+
+  .budget-amount-label {
+    display: block;
+    margin-bottom: 0.3rem;
+    color: var(--text-color-lightest);
+    font-size: 0.75rem;
+    font-weight: 700;
+    text-transform: uppercase;
+  }
+
+  .budget-amount .budget-money {
+    font-size: 1.05rem;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .budget-negative {
+    color: var(--budget-bad);
+  }
+
+  .budget-empty {
+    padding: 1.5rem;
+  }
+
+  .budget-empty code,
+  .budget-directive {
+    display: block;
+    overflow-x: auto;
+    margin-top: 0.75rem;
+    padding: 0.65rem 0.75rem;
+    border-radius: 0.4rem;
+    background: var(--code-background);
+    white-space: nowrap;
+  }
+
+  .budget-unbudgeted {
+    width: 100%;
+    margin: 0;
+  }
+
+  .budget-unbudgeted th,
+  .budget-unbudgeted td {
+    vertical-align: middle;
+  }
+
+  .budget-unbudgeted td:nth-child(n + 2),
+  .budget-unbudgeted th:nth-child(n + 2) {
+    text-align: right;
+  }
+
+  .budget-unbudgeted-account {
+    min-width: 13rem;
+  }
+
+  .budget-unbudgeted-account small {
+    display: block;
+    margin-top: 0.2rem;
+    color: var(--text-color-lightest);
+  }
+
+  .budget-copy {
+    min-height: auto;
+    padding: 0.35rem 0.55rem;
+    white-space: nowrap;
+  }
+
+  .budget-reconciliation {
+    padding: 1rem 1.15rem;
+    border-top: 1px solid var(--border);
+    color: var(--text-color-lightest);
+    font-size: 0.9rem;
+  }
+
+  .budget-reconciliation strong {
+    color: var(--text-color);
+  }
+
+  .budget-help {
+    padding: 1rem 1.15rem;
+  }
+
+  .budget-help summary {
+    cursor: pointer;
+    font-weight: 700;
+  }
+
+  .budget-help p:last-child {
+    margin-bottom: 0;
+  }
+
+  @media (max-width: 850px) {
+    .budget-hero {
+      flex-direction: column;
+    }
+
+    .budget-summary {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .budget-category {
+      grid-template-columns: repeat(3, 1fr);
+    }
+
+    .budget-category-main {
+      grid-column: 1 / -1;
+    }
+  }
+
+  @media (max-width: 560px) {
+    .budget-nav,
+    .budget-nav form {
+      width: 100%;
+    }
+
+    .budget-nav form,
+    .budget-nav input {
+      flex: 1;
+    }
+
+    .budget-summary {
+      grid-template-columns: 1fr;
+    }
+
+    .budget-category {
+      grid-template-columns: 1fr;
+    }
+
+    .budget-category-main {
+      grid-column: auto;
+    }
+
+    .budget-amount {
+      display: flex;
+      justify-content: space-between;
+      text-align: left;
+    }
+
+    .budget-section-heading,
+    .budget-reconciliation {
+      align-items: flex-start;
+      flex-direction: column;
+    }
+  }
+</style>
+
+<section class="budget-page">
+  <div class="budget-hero">
+    <div>
+      <p class="budget-eyebrow">Budget overview</p>
+      <h1>{{ report.month_label }}</h1>
+      <p class="budget-subtitle">
+        {{ report.as_of_label }} · {{ report.days_elapsed }} of {{ report.days_total }} days
+      </p>
+    </div>
+    <nav class="budget-nav" aria-label="Budget month">
+      <a href="{{ request.path }}?month={{ report.previous_month }}" aria-label="Previous month">←</a>
+      <form method="get" action="{{ request.path }}">
+        <label class="budget-visually-hidden" for="budget-month">Month</label>
+        <input id="budget-month" type="month" name="month" value="{{ report.month_key }}">
+        <button type="submit">Go</button>
+      </form>
+      <a href="{{ request.path }}?month={{ report.next_month }}" aria-label="Next month">→</a>
+      {% if report.month_key != report.current_month %}
+        <a href="{{ request.path }}?month={{ report.current_month }}">Today</a>
+      {% endif %}
+    </nav>
+  </div>
+
+  {% if report.errors %}
+    <div class="budget-alert budget-alert-error" role="alert">
+      <strong>Budget setup needs attention</strong>
+      <ul>
+        {% for error in report.errors %}<li>{{ error }}</li>{% endfor %}
+      </ul>
+    </div>
+  {% endif %}
+
+  {% if report.warnings %}
+    <div class="budget-alert budget-alert-warning">
+      <strong>Some values are incomplete</strong>
+      <ul>
+        {% for warning in report.warnings %}<li>{{ warning }}</li>{% endfor %}
+      </ul>
+    </div>
+  {% endif %}
+
+  {% if request.args.get('account') or request.args.get('filter') or request.args.get('time')
+        or request.args.get('conversion') %}
+    <div class="budget-alert budget-alert-info">
+      This report uses the selected month and its own {{ report.currency }} conversion. Fava's global filters are not
+      applied.
+    </div>
+  {% endif %}
+
+  <div class="budget-summary">
+    <div class="budget-summary-card">
+      <p class="budget-kicker">Budget this month</p>
+      <strong>{{ money(report.total_budget) }}</strong>
+    </div>
+    <div class="budget-summary-card">
+      <p class="budget-kicker">Budgeted spend</p>
+      <strong>{{ money(report.budgeted_spend) }}</strong>
+    </div>
+    <div class="budget-summary-card">
+      <p class="budget-kicker">Remaining</p>
+      <strong class="{{ 'budget-negative' if report.remaining < 0 }}">{{ money(report.remaining) }}</strong>
+    </div>
+    <div class="budget-summary-card">
+      <p class="budget-kicker">Unbudgeted spend</p>
+      <strong>{{ money(report.unbudgeted_spend) }}</strong>
+    </div>
+  </div>
+
+  <section class="budget-panel budget-overview">
+    <div class="budget-overview-line">
+      <div>
+        <p class="budget-kicker">Overall progress</p>
+        <strong>
+          {% if private_mode %}
+            Progress hidden in incognito mode
+          {% else %}
+            {{ report.usage_percent }}% of budget used
+          {% endif %}
+        </strong>
+      </div>
+      <span class="budget-status budget-status-{{ report.overall_status }}">{{ report.overall_status_label }}</span>
+    </div>
+    {% if not private_mode %}
+      <div
+        class="budget-progress"
+        role="progressbar"
+        aria-label="Overall budget used"
+        aria-valuemin="0"
+        aria-valuemax="100"
+        aria-valuenow="{{ report.progress_percent }}"
+        aria-valuetext="{{ report.usage_percent }}% of budget used"
+      >
+        <div
+          class="budget-progress-fill budget-progress-fill-{{ report.overall_status }}"
+          style="width: {{ report.progress_percent }}%"
+        ></div>
+        {% if report.state == 'current' %}
+          <span
+            class="budget-progress-marker"
+            style="left: {{ report.pace_percent }}%"
+            title="Budget available by today"
+          ></span>
+        {% endif %}
+      </div>
+    {% endif %}
+    <p class="budget-overview-meta">
+      <span>Pace allowance: {{ money(report.pace_budget) }}</span>
+      {% if report.projected_spend is not none %}
+        <span>If this rate continues: {{ money(report.projected_spend) }}</span>
+      {% endif %}
+      {% if report.remaining_per_day is not none %}
+        <span>{{ money(report.remaining_per_day) }} per remaining day</span>
+      {% endif %}
+      {% if report.future_posting_count %}
+        <span>
+          {{ report.future_posting_count }} future-dated posting(s) excluded: {{ money(report.future_spend) }}
+        </span>
+      {% endif %}
+    </p>
+  </section>
+
+  <section class="budget-panel">
+    <div class="budget-section-heading">
+      <div>
+        <p class="budget-kicker">Categories</p>
+        <h2>Where the budget is going</h2>
+      </div>
+      <p>{{ report.categories|length }} active budget{{ '' if report.categories|length == 1 else 's' }}</p>
+    </div>
+
+    {% if report.categories %}
+      <div class="budget-categories" role="list">
+        {% for row in report.categories %}
+          <div class="budget-category" role="listitem">
+            <div class="budget-category-main">
+              <div class="budget-category-title">
+                <a href="{{ url_for('account', name=row.account, time=report.month_key) }}">{{ row.label }}</a>
+                <span class="budget-status budget-status-{{ row.status }}">{{ row.status_label }}</span>
+              </div>
+              <span class="budget-category-note">
+                {{ row.account }}
+                {% if row.has_child_budget %} · Excludes active sub-budgets{% endif %}
+                {% if row.partial_month %} · Budget changed this month{% endif %}
+                {% if row.unconverted_count %} · {{ row.unconverted_count }} unconverted posting(s){% endif %}
+              </span>
+              {% if not private_mode %}
+                <div
+                  class="budget-progress"
+                  role="progressbar"
+                  aria-label="{{ row.label }} budget used"
+                  aria-valuemin="0"
+                  aria-valuemax="100"
+                  aria-valuenow="{{ row.progress_percent }}"
+                  aria-valuetext="{{ row.usage_percent }}% of budget used"
+                >
+                  <div
+                    class="budget-progress-fill budget-progress-fill-{{ row.status }}"
+                    style="width: {{ row.progress_percent }}%"
+                  ></div>
+                  {% if report.state == 'current' %}
+                    <span
+                      class="budget-progress-marker"
+                      style="left: {{ row.pace_percent }}%"
+                      title="Budget available by today"
+                    ></span>
+                  {% endif %}
+                </div>
+              {% endif %}
+            </div>
+            <div class="budget-amount">
+              <span class="budget-amount-label">Budget</span>
+              <span>{{ money(row.budget) }}</span>
+            </div>
+            <div class="budget-amount">
+              <span class="budget-amount-label">Spent</span>
+              <span>{{ money(row.spent) }}</span>
+            </div>
+            <div class="budget-amount">
+              <span class="budget-amount-label">Remaining</span>
+              <span class="{{ 'budget-negative' if row.remaining < 0 }}">{{ money(row.remaining) }}</span>
+            </div>
+          </div>
+        {% endfor %}
+      </div>
+    {% else %}
+      <div class="budget-empty">
+        <h3>No active {{ report.currency }} budgets for {{ report.month_label }}</h3>
+        <p>Add a native Fava budget directive to any ledger file. The dashboard will pick it up after reload.</p>
+        <code>{{ report.budget_directive_example }}</code>
+      </div>
+    {% endif %}
+  </section>
+
+  {% if report.unbudgeted %}
+    <section class="budget-panel">
+      <div class="budget-section-heading">
+        <div>
+          <p class="budget-kicker">Unbudgeted spending</p>
+          <h2>Categories to review</h2>
+        </div>
+        <p>Suggestions use up to {{ report.suggestion_months }} complete prior months</p>
+      </div>
+      <div style="overflow-x: auto">
+        <table class="budget-unbudgeted">
+          <thead>
+            <tr>
+              <th>Category</th>
+              <th>This month</th>
+              <th>Recent average</th>
+              <th>Suggested budget</th>
+              <th><span class="budget-visually-hidden">Action</span></th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for row in report.unbudgeted %}
+              <tr>
+                <td class="budget-unbudgeted-account">
+                  <a href="{{ url_for('account', name=row.account, time=report.month_key) }}">{{ row.label }}</a>
+                  <small>
+                    {{ row.account }}
+                    {% if row.covered_later %} · A budget becomes active later this month{% endif %}
+                    {% if row.unconverted_count %} · {{ row.unconverted_count }} unconverted posting(s){% endif %}
+                    {% if row.history_incomplete %} · Average excludes unconverted postings{% endif %}
+                  </small>
+                </td>
+                <td>{{ money(row.spent) }}</td>
+                <td>
+                  {{ money(row.recent_average) }}
+                  <small>({{ row.sample_months }} month{{ '' if row.sample_months == 1 else 's' }})</small>
+                </td>
+                <td>{{ money(row.suggested) }}</td>
+                <td>
+                  {% if row.directive and not private_mode %}
+                    <button
+                      class="budget-copy"
+                      type="button"
+                      data-budget-directive="{{ row.directive|e }}"
+                      title="{{ row.directive|e }}"
+                    >Copy directive</button>
+                  {% else %}
+                    <span aria-hidden="true">-</span>
+                  {% endif %}
+                </td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </section>
+  {% endif %}
+
+  <section class="budget-panel">
+    <div class="budget-reconciliation">
+      <span>
+        Converted expenses through this period:
+        <strong>{{ money(report.total_expenses) }}</strong>
+      </span>
+      <span>
+        Budgeted {{ money(report.budgeted_spend) }} +
+        unbudgeted {{ money(report.unbudgeted_spend) }} +
+        excluded {{ money(report.excluded_spend) }}
+      </span>
+    </div>
+  </section>
+
+  <details class="budget-panel budget-help">
+    <summary>Budget setup</summary>
+    <p>
+      Budgets use Fava's native daily, weekly, monthly, quarterly, or yearly directives. Date a new directive when a
+      target changes. A zero amount stops that budget from capturing spending.
+    </p>
+    <code class="budget-directive">{{ report.budget_directive_example }}</code>
+    <p>
+      Parent budgets include descendant spending unless a more-specific active budget owns that posting. Excluded
+      accounts still appear in the reconciliation total.
+    </p>
+  </details>
+</section>

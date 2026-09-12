@@ -1,0 +1,3 @@
+include Dockerfile
+recursive-include docs/images *.png
+recursive-include tests *.bean *.py

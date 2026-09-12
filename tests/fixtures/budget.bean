@@ -1,0 +1,107 @@
+;; -*- mode: beancount; coding: utf-8; fill-column: 400; -*-
+option "title" "Budget test"
+option "operating_currency" "GBP"
+option "operating_currency" "USD"
+option "render_commas" "True"
+option "display_precision" "GBP:0.01"
+option "display_precision" "USD:0.01"
+
+2025-11-01 open Assets:Bank                         GBP
+2025-11-01 open Assets:Dollars                      USD
+2025-11-01 open Assets:Euro                         EUR
+2025-11-01 open Expenses:Car
+2025-11-01 open Expenses:Carpet
+2025-11-01 open Expenses:Excluded
+2025-11-01 open Expenses:ExcludedExtra
+2025-11-01 open Expenses:Food
+2025-11-01 open Expenses:Food:Coffee
+2025-11-01 open Expenses:Food:Groceries
+2025-11-01 open Expenses:Transport
+2025-11-01 open Expenses:Travel
+2025-11-01 open Expenses:Tiny
+2025-11-01 open Expenses:Zero
+
+2025-11-01 price USD                                      0.75 GBP
+
+2025-11-01 custom "fava-extension" "fava_budget" "{
+  'currency': 'GBP',
+  'exclude_accounts': ['Expenses:Excluded'],
+  'labels': {'Expenses:Food': 'Food and dining'},
+  'suggestion_months': 3,
+}"
+
+2026-01-01 custom "budget" Expenses:Food "monthly" 300 GBP
+2026-01-01 custom "budget" Expenses:Food:Coffee "monthly" 50 GBP
+2026-01-01 custom "budget" Expenses:Car "monthly" 100 GBP
+2026-01-01 custom "budget" Expenses:Carpet "monthly" 80 USD
+2026-01-01 custom "budget" Expenses:Tiny "monthly" 0.10 GBP
+2026-01-01 custom "budget" Expenses:Zero "monthly" 0 GBP
+2026-01-01 custom "budget" Assets:Bank "monthly" 100 GBP
+
+2025-11-05 * "November transport"
+  Expenses:Transport                                        30 GBP
+  Assets:Bank                                              -30 GBP
+
+2025-12-05 * "December transport"
+  Expenses:Transport                                        60 GBP
+  Assets:Bank                                              -60 GBP
+
+2026-01-05 * "January transport"
+  Expenses:Transport                                        90 GBP
+  Assets:Bank                                              -90 GBP
+
+2026-02-02 * "Groceries"
+  Expenses:Food:Groceries                                  100 GBP
+  Assets:Bank                                             -100 GBP
+
+2026-02-03 * "Coffee"
+  Expenses:Food:Coffee                                      20 GBP
+  Assets:Bank                                              -20 GBP
+
+2026-02-04 * "Car"
+  Expenses:Car                                              40 GBP
+  Assets:Bank                                              -40 GBP
+
+2026-02-05 * "Carpet"
+  Expenses:Carpet                                           70 GBP
+  Assets:Bank                                              -70 GBP
+
+2026-02-06 * "Travel with explicit price"
+  Expenses:Travel                                          100 USD @ 0.80 GBP
+  Assets:Bank                                              -80 GBP
+
+2026-02-06 * "Travel using price map"
+  Expenses:Travel                                           20 USD
+  Assets:Dollars                                           -20 USD
+
+2026-02-07 * "Excluded expense"
+  Expenses:Excluded                                         25 GBP
+  Assets:Bank                                              -25 GBP
+
+2026-02-07 * "Similar but not excluded"
+  Expenses:ExcludedExtra                                    10 GBP
+  Assets:Bank                                              -10 GBP
+
+2026-02-08 * "Refund"
+  Expenses:Food:Groceries                                  -10 GBP
+  Assets:Bank                                               10 GBP
+
+2026-02-09 * "Unbudgeted transport"
+  Expenses:Transport                                        40 GBP
+  Assets:Bank                                              -40 GBP
+
+2026-02-10 * "Zero budget is inactive"
+  Expenses:Zero                                              5 GBP
+  Assets:Bank                                               -5 GBP
+
+2026-02-10 * "Tiny budget remains active"
+  Expenses:Tiny                                           0.15 GBP
+  Assets:Bank                                            -0.15 GBP
+
+2026-02-10 * "Missing conversion"
+  Expenses:Travel                                           10 EUR
+  Assets:Euro                                              -10 EUR
+
+2026-02-20 * "Future groceries"
+  Expenses:Food:Groceries                                   50 GBP
+  Assets:Bank                                              -50 GBP
