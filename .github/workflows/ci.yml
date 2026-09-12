@@ -68,6 +68,8 @@ jobs:
           missing = required - names
           if missing:
               raise SystemExit(f"Wheel is missing package data: {sorted(missing)}")
+          if not any(name.endswith(".dist-info/licenses/LICENSE") for name in names):
+              raise SystemExit("Wheel is missing the MIT LICENSE file")
 
           sdist = next(Path("dist").glob("*.tar.gz"))
           root = sdist.name.removesuffix(".tar.gz")
@@ -76,6 +78,7 @@ jobs:
 
           required = {
               f"{root}/Dockerfile",
+              f"{root}/LICENSE",
               f"{root}/docs/images/budget-overview.png",
               f"{root}/docs/images/unbudgeted-suggestions.png",
               f"{root}/tests/fixtures/budget.bean",

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import unittest
+from importlib.metadata import metadata, requires
 from importlib.resources import files
 
 
@@ -12,10 +13,16 @@ class PackageDataTest(unittest.TestCase):
 
         self.assertIn('class="budget-page"', template)
         self.assertIn('class="budget-responsive-table budget-categories"', template)
-        self.assertIn("@media (width <= 650px)", template)
+        self.assertIn("@media (width <= 980px)", template)
         self.assertNotIn("\n  header {", template)
         self.assertNotIn("\n  article {", template)
         self.assertIn("bindBudgetCopyButtons", javascript)
+
+    def test_package_requires_supported_fava_version(self) -> None:
+        self.assertIn("fava<2,>=1.30.8", requires("fava-budget") or [])
+
+    def test_package_declares_mit_license(self) -> None:
+        self.assertEqual(metadata("fava-budget")["License-Expression"], "MIT")
 
 
 if __name__ == "__main__":

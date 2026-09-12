@@ -32,7 +32,7 @@ Install the extension directly from GitHub:
 uv add git+https://github.com/lildude/fava-budget.git
 ```
 
-The package supports Python 3.10 or newer and Fava 1.30.
+The package supports Python 3.10 or newer and Fava 1.30.8 or newer.
 
 ## Enable the extension
 
@@ -254,3 +254,7 @@ docker run --rm -p 5000:5000 \
 
 The Budget page uses its own selected calendar month and ignores Fava's global filters. Compare the reconciliation
 total, then check excluded and unconvertible postings.
+
+## License
+
+This project is licensed under the [MIT License](LICENSE). Copyright 2026 Colin Seymour.

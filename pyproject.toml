@@ -8,6 +8,8 @@ version = "0.1.1"
 description = "A focused monthly budgeting extension for Fava"
 readme = "README.md"
 requires-python = ">=3.10"
+license = "MIT"
+license-files = ["LICENSE"]
 authors = [
   { name = "Colin Seymour" },
 ]
@@ -24,7 +26,7 @@ classifiers = [
   "Topic :: Office/Business :: Financial :: Accounting",
 ]
 dependencies = [
-  "fava>=1.30,<2",
+  "fava>=1.30.8,<2",
 ]
 
 [project.optional-dependencies]

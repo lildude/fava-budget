@@ -89,6 +89,17 @@
     justify-content: flex-end;
   }
 
+  .budget-page .budget-nav :is(a.button, button, input) {
+    height: 2.5em;
+  }
+
+  .budget-page .budget-nav a.button {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0.5em 0.75em;
+  }
+
   .budget-page .budget-month-form {
     margin: 0;
   }
@@ -356,7 +367,7 @@
     outline-offset: 2px;
   }
 
-  @media (width <= 850px) {
+  @media (width <= 980px) {
     .budget-page .budget-report-heading {
       flex-direction: column;
     }
@@ -371,7 +382,7 @@
     }
   }
 
-  @media (width <= 650px) {
+  @media (width <= 980px) {
     .budget-page > * + * {
       margin-top: 1em;
     }
